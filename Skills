@@ -1,0 +1,47 @@
+# SecureGate Skills
+
+## scaffold-project
+Create a new Next.js 14 App Router project with TypeScript and Tailwind CSS.
+Install dependencies: prisma, @prisma/client, next-auth, bcryptjs, @types/bcryptjs, zod, resend, @react-email/components, @upstash/ratelimit, @upstash/redis.
+Create the folder structure defined in the rules file.
+Create a singleton Prisma client at src/lib/prisma.ts.
+Create .env.local with all required variable keys (empty values).
+Add .env.local to .gitignore before anything else.
+
+## setup-database
+Write the Prisma schema using the three models defined in rules: User, VerificationToken, PasswordResetToken.
+Run prisma migrate dev --name init.
+Confirm tables exist.
+
+## build-auth
+Create the NextAuth route at src/app/api/auth/[...nextauth]/route.ts using the Credentials provider.
+Implement authorize(): query user by email, use bcryptjs.compare() to check password, return null on failure.
+Use JWT session strategy.
+Create src/app/api/auth/signup/route.ts: validate with Zod, hash with bcrypt.hash(password, 12), save user via Prisma.
+Create middleware.ts to protect /dashboard — redirect unauthenticated users to /login.
+
+## build-email-verification
+After signup, generate a token with crypto.randomBytes(32).toString('hex').
+Save to VerificationToken table with a 15-minute expiry.
+Send verification email via Resend using React Email template.
+Create src/app/verify-email/[token]/page.tsx: validate token, check expiry, set emailVerified, delete token.
+Block dashboard access for unverified users.
+
+## build-forgot-password
+Create /forgot-password page and API route.
+Always return success — never confirm if email exists.
+If user found: generate reset token, save to PasswordResetToken with 1-hour expiry, send email via Resend.
+Create /reset-password/[token] page: validate token, accept new password, hash it, save, delete token, redirect to /login.
+
+## build-rate-limiting
+Add Upstash rate limiting to POST /api/auth/signin: max 5 attempts per IP per 10 minutes.
+Add Upstash rate limiting to POST /api/auth/forgot-password: max 3 attempts per IP per 10 minutes.
+Return 429 status with generic message when limit exceeded.
+Add security headers to next.config.ts: X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin.
+
+## build-ui
+Build all pages with Tailwind CSS only — no component libraries.
+Pages needed: /login, /signup, /forgot-password, /reset-password/[token], /verify-email/[token], /dashboard.
+Every form must have: accessible labels, specific error messages, loading state with disabled button.
+Password field must include a strength indicator: Weak (length < 8), Fair (length 8-11 or missing variety), Strong (12+ chars with uppercase + number + symbol).
+Login error must say exactly: "Invalid email or password"

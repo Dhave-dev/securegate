@@ -1,0 +1,123 @@
+# SecureGate — Project Rules & Context
+
+## What We Are Building
+SecureGate is a standalone authentication app built as a Next.js 14 App Router project.
+It is NOT a full product — its sole purpose is to demonstrate production-grade auth and security.
+Scope is intentionally small. Do not add features beyond what is listed below.
+
+## Tech Stack (Do Not Deviate)
+- Framework: Next.js 14 with App Router and TypeScript
+- Database: PostgreSQL via Prisma ORM
+- Auth: NextAuth.js v5 with Credentials provider only (no social login)
+- Password hashing: bcryptjs with salt rounds of 12
+- Email: Resend + React Email
+- Validation: Zod (server-side only)
+- Rate limiting: Upstash Redis (@upstash/ratelimit + @upstash/redis)
+- Styling: Tailwind CSS
+- Deployment: Vercel
+
+## Folder Structure
+```
+src/
+  app/
+    api/
+      auth/
+        [...nextauth]/route.ts
+        signup/route.ts
+        forgot-password/route.ts
+        reset-password/route.ts
+        verify-email/route.ts
+    (auth)/
+      login/page.tsx
+      signup/page.tsx
+      forgot-password/page.tsx
+      reset-password/[token]/page.tsx
+    verify-email/[token]/page.tsx
+    dashboard/page.tsx
+  lib/
+    prisma.ts
+    auth.ts
+    email.ts
+    rate-limit.ts
+  components/
+    PasswordStrengthIndicator.tsx
+prisma/
+  schema.prisma
+middleware.ts
+```
+
+## Prisma Models
+```prisma
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+}
+
+model PasswordResetToken {
+  email   String
+  token   String   @unique
+  expires DateTime
+}
+```
+
+## Security Rules (Non-Negotiable)
+- NEVER store plain text passwords. Always use bcrypt.hash(password, 12)
+- NEVER confirm whether an email exists. Forgot-password always returns success
+- NEVER expose stack traces or internal errors in API responses
+- NEVER hardcode secrets. All sensitive values go in .env.local only
+- NEVER commit .env.local to GitHub
+- Always validate input server-side with Zod before touching the database
+- Rate limit login: max 5 attempts per IP per 10 minutes
+- Rate limit forgot-password: max 3 attempts per IP per 10 minutes
+- Verification tokens expire in 15 minutes
+- Password reset tokens expire in 1 hour
+- Use crypto.randomBytes(32).toString('hex') for all token generation
+
+## Environment Variables Required
+```
+DATABASE_URL
+NEXTAUTH_SECRET
+NEXTAUTH_URL
+RESEND_API_KEY
+UPSTASH_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN
+```
+
+## Features to Build (In Order)
+1. Database schema + Prisma setup
+2. NextAuth Credentials provider + signup API
+3. Email verification flow (Resend)
+4. Forgot password + reset password flow
+5. Rate limiting middleware
+6. UI polish (forms with loading states, validation messages, password strength indicator)
+
+## UI Requirements
+- Tailwind CSS only — no component libraries
+- Every form: accessible labels, real error messages (not "Something went wrong"), loading state
+- Password field: strength indicator showing Weak / Fair / Strong
+- Login error message: "Invalid email or password" — never say which field is wrong
+- Clean, dark or neutral design — minimal, functional
+
+## What NOT to Build
+- Social login (Google, GitHub, etc.)
+- Multi-factor authentication
+- Admin panel
+- Payment integration
+- Anything not listed in the Features section above
+
+## Code Style
+- TypeScript strict mode
+- No any types
+- Server components by default, use "use client" only when necessary
+- API routes return proper HTTP status codes (400, 401, 429, 500)
+- Prisma client is a singleton in lib/prisma.ts
