@@ -1,6 +1,9 @@
-import { auth } from "@/lib/auth"
+import NextAuth from "next-auth"
+import { authConfig } from "@/lib/auth.config"
 import { NextResponse } from "next/server"
 import { rateLimit } from "@/lib/rate-limit"
+
+const { auth } = NextAuth(authConfig)
 
 export default auth(async (req) => {
   if (req.nextUrl.pathname === "/api/auth/callback/credentials" && req.method === "POST") {
